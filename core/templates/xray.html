@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>X-ray Diagnosis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-purple-100 min-h-screen flex items-center justify-center font-sans relative">
+
+  <!-- Back Button -->
+  <a href="/home/" class="absolute top-4 left-4 sm:top-6 sm:left-6 text-blue-600 hover:underline text-sm font-semibold flex items-center z-50 bg-white/80 backdrop-blur-sm px-3 py-2 rounded-lg shadow-sm sm:bg-transparent sm:shadow-none sm:px-0 sm:py-0 sm:backdrop-blur-none">
+    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+    Back to Home
+  </a>
+
+  <!-- Card -->
+  <div class="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full mx-4 my-8 relative z-10">
+    <h1 class="text-2xl font-bold text-gray-800 mb-6 text-center">X-ray Diagnosis</h1>
+    <p class="text-sm text-gray-600 mb-6 text-center">Upload your X-ray image, and our AI-powered system will analyze it for diagnostic insights.</p>
+    
+    <form id="xrayForm" onsubmit="event.preventDefault(); submitXray();">
+      <label class="text-sm text-gray-600 block" for="xrayFile">Upload X-Ray Image:</label>
+      <input type="file" id="xrayFile" name="file" accept="image/*" required class="w-full p-3 mt-2 mb-6 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-400 outline-none bg-white">
+      
+      <div class="flex items-center justify-center">
+        <button type="submit" id="submitBtn" class="w-full py-3 rounded-lg font-semibold bg-gradient-to-r from-blue-500 to-purple-500 text-white hover:opacity-90 hover:scale-105 transition duration-300 shadow-md">Analyze X-ray</button>
+        <div class="hidden ml-4 animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500" id="loadingSpinner"></div>
+      </div>
+    </form>
+    
+    <div id="xrayResult" class="hidden mt-6 p-4 bg-gray-50 rounded-lg text-gray-800 text-center text-lg"></div>
+  </div>
+
+  <script>
+        async function submitXray() {
+            const formData = new FormData();
+            const fileInput = document.getElementById('xrayFile');
+            formData.append('file', fileInput.files[0]);
+
+            document.getElementById('loadingSpinner').style.display = 'inline-block';
+            document.getElementById('submitBtn').disabled = true;
+            document.getElementById('xrayResult').style.display = 'none';
+
+            try {
+                const response = await fetch('/core_api/predict/pneumonia/', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+
+                const resultDiv = document.getElementById('xrayResult');
+                resultDiv.style.display = 'block';
+
+                if (result.status === 'success') {
+                    resultDiv.innerHTML = '<strong>' + result.xray_result + '</strong>';
+                } else {
+                    resultDiv.innerHTML = '<span style="color:red">Error: ' + result.message + '</span>';
+                }
+            } catch (err) {
+                const resultDiv = document.getElementById('xrayResult');
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = '<span style="color:red">Network Error During Upload</span>';
+            }
+            document.getElementById('loadingSpinner').style.display = 'none';
+            document.getElementById('submitBtn').disabled = false;
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CKD Diagnosis</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body
+  class="bg-gradient-to-br from-blue-50 to-purple-100 min-h-screen flex items-center justify-center font-sans relative">
+
+  <!-- Back Button -->
+  <a href="/home/" class="absolute top-4 left-4 sm:top-6 sm:left-6 text-blue-600 hover:underline text-sm font-semibold flex items-center z-50 bg-white/80 backdrop-blur-sm px-3 py-2 rounded-lg shadow-sm sm:bg-transparent sm:shadow-none sm:px-0 sm:py-0 sm:backdrop-blur-none">
+    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+    </svg>
+    Back to Home
+  </a>
+
+  <div class="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full mx-4 my-8 relative z-10">
+    <h1 class="text-2xl font-bold text-gray-800 mb-6 text-center">CKD Diagnosis</h1>
+
+    <label class="text-sm text-gray-600 block" for="eGFR">Enter eGFR:</label>
+    <input
+      class="w-full p-3 mt-2 mb-4 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-400 outline-none bg-white"
+      type="number" id="eGFR">
+
+    <label class="text-sm text-gray-600 block" for="ACR">Enter ACR:</label>
+    <input
+      class="w-full p-3 mt-2 mb-4 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-400 outline-none bg-white"
+      type="number" id="ACR">
+
+    <label class="text-sm text-gray-600 block" for="creatinine">Enter Serum Creatinine (mg/dL):</label>
+    <input
+      class="w-full p-3 mt-2 mb-4 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-400 outline-none bg-white"
+      type="number" id="creatinine" step="0.1">
+
+    <label class="text-sm text-gray-600 block" for="urea">Enter Blood Urea (mg/dL):</label>
+    <input
+      class="w-full p-3 mt-2 mb-4 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-400 outline-none bg-white"
+      type="number" id="urea" step="0.1">
+
+    <label class="text-sm text-gray-600 block" for="hemoglobin">Enter Hemoglobin (g/dL):</label>
+    <input
+      class="w-full p-3 mt-2 mb-4 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-400 outline-none bg-white"
+      type="number" id="hemoglobin" step="0.1">
+
+    <div class="mb-6">
+      <label class="text-sm text-gray-600 block font-semibold mb-2">Upload Medical Reports (PDF):</label>
+      <input type="file" id="pdfUpload" accept=".pdf" class="hidden">
+      <button type="button" id="uploadBtn"
+        class="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-400 hover:text-blue-500 transition duration-300 mb-2">Choose
+        PDF File</button>
+
+      <div id="uploadedPdf" class="hidden mt-2 p-3 bg-gray-50 rounded-lg text-sm text-gray-700 break-all">
+        <span class="font-semibold">Uploaded: </span>
+        <a id="pdfFileName" href="#" target="_blank" class="text-blue-600 hover:underline"></a>
+      </div>
+      <div id="extractionStatus" class="hidden mt-2 p-2 rounded text-sm text-center"></div>
+      <div id="dataPreview" class="hidden mt-3 p-3 bg-gray-50 rounded border border-gray-200 text-xs"></div>
+      <div id="manualEntry" class="hidden mt-2 italic text-gray-500 text-sm">No recognizable data patterns found in PDF.
+        Please enter data manually.</div>
+    </div>
+
+    <button onclick="diagnose()"
+      class="w-full py-3 rounded-lg font-semibold bg-gradient-to-r from-blue-500 to-purple-500 text-white hover:opacity-90 hover:scale-105 transition duration-300 mb-3 shadow-md">Diagnose</button>
+    <button id="downloadPdf"
+      class="hidden w-full py-3 rounded-lg font-semibold bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:opacity-90 hover:scale-105 transition duration-300 shadow-md"
+      onclick="generatePDF()">Download PDF Report</button>
+
+    <div class="mt-4 text-center" id="result"></div>
+  </div>
+
+  <script>
+    let diagnosisResult = "";
+    let uploadedPdfFile = null;
+    let uploadedPdfUrl = null;
+    let hasCKD = false;
+    let ckdStage = 0;
+
+    // // Nutrition recommendations for CKD patients
+    // const ckdNutritionRecommendations = [
+    //   "Low-sodium foods (fresh vegetables, unsalted nuts)",
+    //   "High-quality protein sources (egg whites, fish, lean poultry) in moderation",
+    //   "Potassium-controlled foods (apples, berries, cabbage)",
+    //   "Phosphorus-controlled foods (avoid dairy, nuts, beans)",
+    //   "Fluid management as advised by your doctor",
+    //   "Foods rich in omega-3 fatty acids (flaxseeds, fish)",
+    //   "Limited protein intake based on your stage of CKD",
+    //   "Foods low in saturated fat and cholesterol"
+    // ];
+
+    // // Nutrition recommendations for non-CKD patients
+    // const healthyNutritionRecommendations = [
+    //   "Balanced diet with variety of fruits and vegetables",
+    //   "Whole grains (oats, brown rice, whole wheat)",
+    //   "Lean protein sources (chicken, fish, legumes)",
+    //   "Low-fat dairy products",
+    //   "Healthy fats (avocado, olive oil, nuts)",
+    //   "Limited processed foods and added sugars",
+    //   "Adequate hydration with water",
+    //   "Foods rich in antioxidants (berries, leafy greens)"
+    // ];
+    const ckdNutritionRecommendations = {
+      highRisk: {
+        title: "CKD Dietary Management Plan",
+
+        recommendedFoods: [
+          "Low-sodium vegetables such as cabbage, cauliflower, and cucumber",
+          "Controlled portions of high-quality protein like egg whites and fish",
+          "Low-potassium fruits such as apples, grapes, and berries",
+          "Healthy fats including olive oil and flaxseeds",
+          "Rice, oats, and refined grains in controlled portions",
+          "Adequate calorie intake to maintain healthy body weight"
+        ],
+
+        foodsToAvoid: [
+          "Processed and packaged foods with high sodium",
+          "Excess dairy products rich in phosphorus",
+          "High-potassium foods such as bananas and potatoes",
+          "Soft drinks and high-phosphorus beverages",
+          "Excess red meat and fried foods"
+        ],
+
+        lifestyleRecommendations: [
+          "Follow fluid intake recommendations provided by physician",
+          "Monitor blood pressure regularly",
+          "Reduce salt consumption",
+          "Maintain regular medical checkups",
+          "Consult nephrologist for personalized diet planning"
+        ]
+      },
+
+      moderateRisk: {
+        title: "Moderate CKD Prevention Diet",
+
+        recommendedFoods: [
+          "Fresh vegetables and fruits with moderate potassium levels",
+          "Whole grains such as oats and brown rice",
+          "Lean proteins like chicken and fish",
+          "Foods rich in antioxidants",
+          "Healthy unsaturated fats"
+        ],
+
+        foodsToAvoid: [
+          "High sodium snacks",
+          "Processed meat products",
+          "Sugary beverages",
+          "Excess fast food consumption"
+        ],
+
+        lifestyleRecommendations: [
+          "Maintain healthy hydration",
+          "Exercise regularly",
+          "Monitor kidney function periodically",
+          "Maintain healthy blood sugar and blood pressure levels"
+        ]
+      },
+
+      healthy: {
+        title: "Healthy Kidney Maintenance Diet",
+
+        recommendedFoods: [
+          "Balanced diet with fruits and vegetables",
+          "Adequate water intake",
+          "Whole grains and fiber-rich foods",
+          "Lean protein sources",
+          "Foods rich in antioxidants"
+        ],
+
+        lifestyleRecommendations: [
+          "Continue healthy eating habits",
+          "Avoid excessive salt intake",
+          "Maintain active lifestyle",
+          "Annual kidney health screening"
+        ]
+      }
+    };
+
+    // Diagnosis texts and risk levels
+    // const stageInfo = {
+    //   "Normal": { text: "Negative for CKD (Normal Kidney Function)", risk: "Low Risk" },
+    //   "1": { text: "Positive for CKD (Stage 1 - Kidney damage with normal function)", risk: "Early Risk" },
+    //   "2": { text: "Positive for CKD (Stage 2 - Mild kidney damage)", risk: "Mild Risk" },
+    //   "3A": { text: "Positive for CKD (Stage 3A - Mild to moderate loss of kidney function)", risk: "Moderate Risk" },
+    //   "3B": { text: "Positive for CKD (Stage 3B - Moderate to severe loss of kidney function)", risk: "Moderate Risk" },
+    //   "4": { text: "Positive for CKD (Stage 4 - Severe kidney damage)", risk: "High Risk" },
+    //   "5": { text: "Positive for CKD (Stage 5 - Kidney failure)", risk: "Critical Risk" }
+    // };
+    const stageInfo = {
+      Normal: {
+        text: "Negative for CKD (Normal Kidney Function)",
+        risk: "Low Risk"
+      },
+      1: {
+        text: "Positive for CKD (Stage 1 - Kidney damage with normal function)",
+        risk: "Early Risk"
+      },
+      2: {
+        text: "Positive for CKD (Stage 2 - Mild kidney damage)",
+        risk: "Mild Risk"
+      },
+      "3A": {
+        text: "Positive for CKD (Stage 3A - Mild to moderate loss of kidney function)",
+        risk: "Moderate Risk"
+      },
+      "3B": {
+        text: "Positive for CKD (Stage 3B - Moderate to severe loss of kidney function)",
+        risk: "Moderate Risk"
+      },
+      4: {
+        text: "Positive for CKD (Stage 4 - Severe kidney damage)",
+        risk: "High Risk"
+      },
+      5: {
+        text: "Positive for CKD (Stage 5 - Kidney failure)",
+        risk: "Critical Risk"
+      }
+    };
+
+    // Treatment plans based on CKD stage
+    // const ckdTreatmentPlans = {
+    //   "Normal": {
+    //     title: "Normal Kidney Function (eGFR ≥ 90, ACR < 30)",
+    //     recommendations: [
+    //       "Maintain a healthy lifestyle",
+    //       "Regular exercise and balanced diet",
+    //       "Stay hydrated",
+    //       "Routine health checkups"
+    //     ]
+    //   },
+    //   1: {
+    //     title: "CKD Stage 1 (Mild kidney damage with normal eGFR ≥90)",
+    //     recommendations: [
+    //       "Control blood pressure (target <130/80 mmHg)",
+    //       "Manage blood sugar if diabetic",
+    //       "Regular monitoring of kidney function",
+    //       "ACE inhibitors or ARBs if proteinuria present",
+    //       "Healthy diet low in sodium",
+    //       "Smoking cessation",
+    //       "Regular exercise"
+    //     ]
+    //   },
+    //   2: {
+    //     title: "CKD Stage 2 (Mild kidney damage with eGFR 60-89)",
+    //     recommendations: [
+    //       "Continue all Stage 1 recommendations",
+    //       "Monitor for disease progression",
+    //       "Consider referral to nephrologist if rapid progression",
+    //       "Adjust medications based on kidney function",
+    //       "Limit protein intake to 0.8 g/kg/day",
+    //       "Monitor potassium and phosphorus levels"
+    //     ]
+    //   },
+    //   "3A": {
+    //     title: "CKD Stage 3A (Mild to moderate kidney damage with eGFR 45-59)",
+    //     recommendations: [
+    //       "Nephrology referral recommended",
+    //       "Evaluate for complications (anemia, bone disease)",
+    //       "More stringent blood pressure control",
+    //       "Possible need for erythropoietin-stimulating agents",
+    //       "Vitamin D supplementation if deficient",
+    //       "Phosphate binders if needed",
+    //       "Limit protein intake to 0.6-0.8 g/kg/day"
+    //     ]
+    //   },
+    //   "3B": {
+    //     title: "CKD Stage 3B (Moderate to severe kidney damage with eGFR 30-44)",
+    //     recommendations: [
+    //       "Nephrology referral essential",
+    //       "Evaluate for complications (anemia, bone disease)",
+    //       "More stringent blood pressure control",
+    //       "Erythropoietin-stimulating agents likely needed",
+    //       "Vitamin D supplementation if deficient",
+    //       "Phosphate binders usually needed",
+    //       "Limit protein intake to 0.6-0.8 g/kg/day"
+    //     ]
+    //   },
+    //   "4": {
+    //     title: "CKD Stage 4 (Severe kidney damage with eGFR 15-29)",
+    //     recommendations: [
+    //       "Regular nephrology care essential",
+    //       "Prepare for renal replacement therapy",
+    //       "Discuss dialysis options (hemodialysis, peritoneal dialysis)",
+    //       "Evaluate for kidney transplantation",
+    //       "Manage complications aggressively",
+    //       "Strict fluid restriction if indicated",
+    //       "Low phosphorus diet"
+    //     ]
+    //   },
+    //   "5": {
+    //     title: "CKD Stage 5 (Kidney failure with eGFR <15)",
+    //     recommendations: [
+    //       "Dialysis or transplantation required",
+    //       "Comprehensive management of uremic symptoms",
+    //       "Strict dietary restrictions",
+    //       "Manage mineral and bone disorders",
+    //       "Anemia management",
+    //       "Cardiovascular risk reduction",
+    //       "Psychological support"
+    //     ]
+    //   }
+    // };
+
+    const ckdTreatmentPlans = {
+      Normal: {
+        title: "Normal Kidney Function (eGFR ≥ 90, ACR < 30)",
+        recommendations: [
+          "Maintain a healthy lifestyle",
+          "Regular exercise and balanced diet",
+          "Stay hydrated",
+          "Routine health checkups"
+        ]
+      },
+      1: {
+        title: "CKD Stage 1 (Mild kidney damage with normal eGFR ≥90)",
+        recommendations: [
+          "Control blood pressure (target <130/80 mmHg)",
+          "Manage blood sugar if diabetic",
+          "Regular monitoring of kidney function",
+          "ACE inhibitors or ARBs if proteinuria present",
+          "Healthy diet low in sodium",
+          "Smoking cessation",
+          "Regular exercise"
+        ]
+      },
+      2: {
+        title: "CKD Stage 2 (Mild kidney damage with eGFR 60-89)",
+        recommendations: [
+          "Continue all Stage 1 recommendations",
+          "Monitor for disease progression",
+          "Consider referral to nephrologist if rapid progression",
+          "Adjust medications based on kidney function",
+          "Limit protein intake to 0.8 g/kg/day",
+          "Monitor potassium and phosphorus levels"
+        ]
+      },
+      "3A": {
+        title: "CKD Stage 3A (Mild to moderate kidney damage with eGFR 45-59)",
+        recommendations: [
+          "Nephrology referral recommended",
+          "Evaluate for complications (anemia, bone disease)",
+          "More stringent blood pressure control",
+          "Possible need for erythropoietin-stimulating agents",
+          "Vitamin D supplementation if deficient",
+          "Phosphate binders if needed",
+          "Limit protein intake to 0.6-0.8 g/kg/day"
+        ]
+      },
+      "3B": {
+        title: "CKD Stage 3B (Moderate to severe kidney damage with eGFR 30-44)",
+        recommendations: [
+          "Nephrology referral essential",
+          "Evaluate for complications (anemia, bone disease)",
+          "More stringent blood pressure control",
+          "Erythropoietin-stimulating agents likely needed",
+          "Vitamin D supplementation if deficient",
+          "Phosphate binders usually needed",
+          "Limit protein intake to 0.6-0.8 g/kg/day"
+        ]
+      },
+      4: {
+        title: "CKD Stage 4 (Severe kidney damage with eGFR 15-29)",
+        recommendations: [
+          "Regular nephrology care essential",
+          "Prepare for renal replacement therapy",
+          "Discuss dialysis options (hemodialysis, peritoneal dialysis)",
+          "Evaluate for kidney transplantation",
+          "Manage complications aggressively",
+          "Strict fluid restriction if indicated",
+          "Low phosphorus diet"
+        ]
+      },
+      5: {
+        title: "CKD Stage 5 (Kidney failure with eGFR <15)",
+        recommendations: [
+          "Dialysis or transplantation required",
+          "Comprehensive management of uremic symptoms",
+          "Strict dietary restrictions",
+          "Manage mineral and bone disorders",
+          "Anemia management",
+          "Cardiovascular risk reduction",
+          "Psychological support"
+        ]
+      }
+    };
+
+    function determineCKDStage(eGFR, ACR) {
+      if (eGFR >= 90) {
+        if (ACR < 30) {
+          return "Normal";
+        }
+        return "1";
+      }
+      if (eGFR >= 60) return "2";
+      if (eGFR >= 45) return "3A";
+      if (eGFR >= 30) return "3B";
+      if (eGFR >= 15) return "4";
+      return "5";
+    }
+
+    async function diagnose() {
+      const eGFR = parseFloat(document.getElementById('eGFR').value);
+      const ACR = parseFloat(document.getElementById('ACR').value);
+      const creatinine = parseFloat(document.getElementById('creatinine').value);
+      const urea = parseFloat(document.getElementById('urea').value);
+      const hemoglobin = parseFloat(document.getElementById('hemoglobin').value);
+
+      if (isNaN(eGFR) || isNaN(ACR) || isNaN(creatinine) || isNaN(urea) || isNaN(hemoglobin)) {
+        document.getElementById('result').innerHTML = 'Please enter valid numbers for all fields.';
+        document.getElementById('result').className = 'result';
+        document.getElementById('downloadPdf').style.display = 'none';
+        return;
+      }
+
+      document.getElementById('result').innerHTML = 'Analyzing...';
+      document.getElementById('result').className = 'result';
+      document.getElementById('downloadPdf').style.display = 'none';
+
+      const pyData = {
+        age: 50, // default if not in UI
+        bp: 80,
+        sg: 1.020,
+        al: ACR,
+        su: 0,
+        urea: urea,
+        creatinine: creatinine,
+        eGFR: eGFR,
+        hemoglobin: hemoglobin
+      };
+
+      try {
+        const resp = await fetch('/core_api/predict/ckd/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(pyData)
+        });
+        const jsonResp = await resp.json();
+        if (jsonResp.status === 'success') {
+          hasCKD = jsonResp.hasCKD;
+          ckdStage = determineCKDStage(eGFR, ACR);
+
+          if (ckdStage === "Normal") {
+            hasCKD = false;
+          }
+
+          if (ckdStage === "Normal") {
+            diagnosisResult = `<strong class="negative">Result: ${stageInfo[ckdStage].text}</strong><br>
+                                     <strong>Severity: <span style="color: #2E7D32;">${stageInfo[ckdStage].risk}</span></strong>`;
+          } else {
+            diagnosisResult = `<strong class="positive">Result: ${stageInfo[ckdStage].text}</strong><br>
+                                     <strong>Severity: <span style="color: #d32f2f;">${stageInfo[ckdStage].risk}</span></strong><br>
+                                     Please consult a doctor for proper management.`;
+          }
+          document.getElementById('result').innerHTML = diagnosisResult;
+          document.getElementById('downloadPdf').style.display = 'block';
+        } else {
+          document.getElementById('result').innerHTML = 'Error: ' + jsonResp.message;
+        }
+      } catch (err) {
+        document.getElementById('result').innerHTML = 'Network error connecting to Backend ML API.';
+      }
+    }
+    function generatePDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      // Title
+      doc.setFontSize(22);
+      doc.setTextColor(106, 17, 203);
+      doc.text('CKD Diagnosis Report', 105, 20, { align: 'center' });
+
+      // Patient Data in Table
+      doc.setFontSize(16);
+      doc.setTextColor(0, 0, 0);
+      doc.text('Patient Data', 20, 35);
+
+      const inputs = [
+        { id: 'eGFR', label: 'eGFR' },
+        { id: 'ACR', label: 'ACR' },
+        { id: 'creatinine', label: 'Serum Creatinine (mg/dL)' },
+        { id: 'urea', label: 'Blood Urea (mg/dL)' },
+        { id: 'hemoglobin', label: 'Hemoglobin (g/dL)' }
+      ];
+
+      let yPosition = 45;
+
+      // Draw table headers
+      doc.setFontSize(12);
+      doc.setFillColor(230, 230, 250);
+      doc.rect(20, yPosition, 80, 10, 'F'); // Label cell
+      doc.rect(100, yPosition, 80, 10, 'F'); // Value cell
+      doc.setTextColor(0, 0, 0);
+      doc.text('Parameter', 25, yPosition + 7);
+      doc.text('Value', 105, yPosition + 7);
+
+      yPosition += 12;
+
+      // Add table rows
+      inputs.forEach(input => {
+        const value = document.getElementById(input.id).value;
+        doc.rect(20, yPosition, 80, 10); // Label cell
+        doc.rect(100, yPosition, 80, 10); // Value cell
+        doc.text(input.label, 25, yPosition + 7);
+        doc.text(value || '-', 105, yPosition + 7);
+        yPosition += 12;
+      });
+
+      // Uploaded PDF note
+      if (uploadedPdfFile) {
+        doc.setFontSize(10);
+        doc.setTextColor(100, 100, 100);
+        doc.text(`Medical report uploaded: ${uploadedPdfFile.name}`, 20, yPosition + 5);
+        yPosition += 10;
+      }
+
+      // Diagnosis Result
+      doc.setFontSize(16);
+      doc.setTextColor(0, 0, 0);
+      doc.text('Diagnosis Result', 20, yPosition + 15);
+
+      doc.setFontSize(14);
+      if (ckdStage === "Normal") {
+        doc.setTextColor(46, 125, 50);
+        doc.text(stageInfo[ckdStage].text, 20, yPosition + 25);
+        doc.setFontSize(12);
+        doc.text(`Severity: ${stageInfo[ckdStage].risk}`, 20, yPosition + 32);
+        yPosition += 40;
+      } else {
+        doc.setTextColor(211, 47, 47);
+        doc.text(stageInfo[ckdStage].text, 20, yPosition + 25);
+        doc.setFontSize(12);
+        doc.text(`Severity: ${stageInfo[ckdStage].risk}`, 20, yPosition + 32);
+        doc.text('Please consult a doctor for proper management.', 20, yPosition + 39);
+        yPosition += 47;
+      }
+
+      // Interpretation Guidelines Table
+      doc.setFontSize(16);
+      doc.setTextColor(0, 0, 0);
+      doc.text('Interpretation Guidelines', 20, yPosition);
+
+      yPosition += 10;
+      // const guidelines = [
+      //   'eGFR < 60: Possible kidney impairment',
+      //   'ACR ≥ 30: Possible kidney damage',
+      //   'Creatinine > 1.2 mg/dL: Possible issue',
+      //   'Urea > 40 mg/dL: Possible issue',
+      //   'Hemoglobin < 12 g/dL: Possible anemia'
+      // ];
+      const guidelines = [
+        'eGFR < 60: Possible kidney impairment',
+        'ACR >= 30: Possible kidney damage',
+        'Creatinine > 1.2 mg/dL: Possible issue',
+        'Urea > 40 mg/dL: Possible issue',
+        'Hemoglobin < 12 g/dL: Possible anemia'
+      ];
+
+      guidelines.forEach(g => {
+        doc.setFontSize(11);
+        doc.text(`• ${g}`, 25, yPosition);
+        yPosition += 7;
+      });
+
+      yPosition += 10;
+
+      // CKD Treatment Plan in table format
+      if (ckdStage && ckdTreatmentPlans[ckdStage]) {
+        doc.setFontSize(16);
+        doc.setTextColor(0, 0, 0);
+        doc.text('Personalized Treatment Plan', 20, yPosition);
+        yPosition += 10;
+
+        doc.setFontSize(13);
+        doc.setTextColor(106, 17, 203);
+        doc.text(ckdTreatmentPlans[ckdStage].title, 20, yPosition);
+        yPosition += 8;
+
+        doc.setFontSize(11);
+        doc.setTextColor(0, 0, 0);
+
+        ckdTreatmentPlans[ckdStage].recommendations.forEach((rec) => {
+          if (yPosition > 270) {
+            doc.addPage();
+            yPosition = 20;
+          }
+          const splitRec = doc.splitTextToSize(`• ${rec}`, 170);
+          doc.text(splitRec, 25, yPosition);
+          yPosition += splitRec.length * 6;
+        });
+        yPosition += 6;
+      }
+
+      // Nutrition Recommendations
+      doc.setFontSize(16);
+      doc.setTextColor(0, 0, 0);
+      doc.text('Nutrition Recommendations', 20, yPosition);
+      yPosition += 10;
+
+      let riskKey = "healthy";
+      if (ckdStage === "1" || ckdStage === "2" || ckdStage === "3A" || ckdStage === "3B") {
+        riskKey = "moderateRisk";
+      } else if (ckdStage === "4" || ckdStage === "5") {
+        riskKey = "highRisk";
+      }
+
+      const recs = ckdNutritionRecommendations[riskKey];
+
+      if (recs) {
+        doc.setFontSize(13);
+        doc.setTextColor(106, 17, 203);
+        doc.text(recs.title, 20, yPosition);
+        yPosition += 8;
+
+        const addSection = (title, items) => {
+          if (!items || items.length === 0) return;
+          if (yPosition > 270) { doc.addPage(); yPosition = 20; }
+          doc.setFontSize(12);
+          doc.setTextColor(0, 0, 0);
+          doc.text(title, 20, yPosition);
+          yPosition += 7;
+          doc.setFontSize(11);
+          items.forEach(item => {
+            if (yPosition > 270) { doc.addPage(); yPosition = 20; }
+            const splitItem = doc.splitTextToSize(`• ${item}`, 170);
+            doc.text(splitItem, 25, yPosition);
+            yPosition += splitItem.length * 6;
+          });
+          yPosition += 4;
+        };
+
+        addSection("Recommended Foods:", recs.recommendedFoods);
+        addSection("Foods to Avoid:", recs.foodsToAvoid);
+        addSection("Lifestyle Recommendations:", recs.lifestyleRecommendations);
+      }
+
+      // Footer
+      doc.setFontSize(10);
+      doc.setTextColor(100, 100, 100);
+      doc.text(`Report generated on: ${new Date().toLocaleDateString()}`, 20, 285);
+      doc.text('Disclaimer: This is a demo tool, not a medical diagnosis.', 20, 290);
+
+      doc.save('ckd-diagnosis-report.pdf');
+    }
+
+    function createBubbles() {
+      const background = document.querySelector('.background-animation');
+      for (let i = 0; i < 15; i++) {
+        let bubble = document.createElement('div');
+        bubble.classList.add('bubble');
+        let size = Math.random() * 50 + 20;
+        bubble.style.width = `${size}px`;
+        bubble.style.height = `${size}px`;
+        bubble.style.left = `${Math.random() * 100}vw`;
+        bubble.style.animationDuration = `${Math.random() * 4 + 3}s`;
+        bubble.style.animationDelay = `${Math.random() * 3}s`;
+        background.appendChild(bubble);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+      const uploadBtn = document.getElementById('uploadBtn');
+      const pdfUpload = document.getElementById('pdfUpload');
+      const uploadedPdf = document.getElementById('uploadedPdf');
+      const pdfFileName = document.getElementById('pdfFileName');
+      const extractionStatus = document.getElementById('extractionStatus');
+      const dataPreview = document.getElementById('dataPreview');
+      const manualEntry = document.getElementById('manualEntry');
+
+      // Hide manual entry message initially
+      manualEntry.style.display = 'none';
+
+      // Set up PDF upload button
+      uploadBtn.addEventListener('click', function () {
+        pdfUpload.click();
+      });
+
+      pdfUpload.addEventListener('change', function (e) {
+        if (e.target.files.length > 0) {
+          uploadedPdfFile = e.target.files[0];
+
+          // Create object URL for the uploaded PDF
+          if (uploadedPdfUrl) {
+            URL.revokeObjectURL(uploadedPdfUrl);
+          }
+          uploadedPdfUrl = URL.createObjectURL(uploadedPdfFile);
+
+          // Display uploaded file name
+          pdfFileName.textContent = uploadedPdfFile.name;
+          pdfFileName.href = uploadedPdfUrl;
+          uploadedPdf.style.display = 'block';
+
+          // Extract data from PDF
+          extractDataFromPdf(uploadedPdfFile);
+        }
+      });
+
+      // Function to extract data from PDF
+      async function extractDataFromPdf(file) {
+        extractionStatus.style.display = 'block';
+        extractionStatus.textContent = 'Extracting data from PDF...';
+        extractionStatus.className = 'extraction-status';
+
+        dataPreview.style.display = 'none';
+        manualEntry.style.display = 'none';
+
+        try {
+          const fileReader = new FileReader();
+          fileReader.onload = async function () {
+            try {
+              const typedarray = new Uint8Array(this.result);
+
+              // Configure PDF.js worker
+              pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+
+              // Load the PDF
+              const pdf = await pdfjsLib.getDocument(typedarray).promise;
+              let fullText = '';
+
+              for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const textContent = await page.getTextContent();
+                const pageText = textContent.items.map(item => item.str).join(' ');
+                fullText += pageText + ' ';
+              }
+
+              const text = fullText.toLowerCase();
+
+              // Helper to extract values using regex
+              const extractValue = (regex) => {
+                const match = text.match(regex);
+                return match ? parseFloat(match[1]) : null;
+              };
+
+              const medicalData = {};
+
+              // Extract each field if present in the text
+              const eGFR = extractValue(/egfr[^\d]*(\d+(?:\.\d+)?)/i);
+              if (eGFR !== null) medicalData.eGFR = eGFR;
+
+              const ACR = extractValue(/acr[^\d]*(\d+(?:\.\d+)?)/i) || extractValue(/albumin(?:-to-)?creatinine[^\d]*(\d+(?:\.\d+)?)/i);
+              if (ACR !== null) medicalData.ACR = ACR;
+
+              const creatinine = extractValue(/creatinine[^\d]*(\d+(?:\.\d+)?)/i);
+              if (creatinine !== null) medicalData.creatinine = creatinine;
+
+              const urea = extractValue(/urea[^\d]*(\d+(?:\.\d+)?)/i);
+              if (urea !== null) medicalData.urea = urea;
+
+              const hemoglobin = extractValue(/hemoglobin[^\d]*(\d+(?:\.\d+)?)/i) || extractValue(/hb[^\d]*(\d+(?:\.\d+)?)/i);
+              if (hemoglobin !== null) medicalData.hemoglobin = hemoglobin;
+
+              // Fill the form with extracted data
+              let extractedCount = Object.keys(medicalData).length;
+              let previewHTML = '<strong>Data extracted from PDF:</strong><br>';
+
+              for (const [key, value] of Object.entries(medicalData)) {
+                const inputField = document.getElementById(key);
+                if (inputField) {
+                  inputField.value = value;
+                  previewHTML += `<div class="data-item"><span>${key}:</span> <span>${value}</span></div>`;
+                }
+              }
+
+              if (extractedCount > 0) {
+                // Show success message and data preview
+                extractionStatus.textContent = `Successfully extracted ${extractedCount} data points from PDF!`;
+                extractionStatus.className = 'extraction-status extraction-success';
+
+                dataPreview.innerHTML = previewHTML;
+                dataPreview.style.display = 'block';
+                manualEntry.style.display = 'none';
+              } else {
+                // Show message that no data was found
+                extractionStatus.textContent = 'No medical data found in PDF. Please enter data manually.';
+                extractionStatus.className = 'extraction-status extraction-error';
+                manualEntry.style.display = 'block';
+              }
+            } catch (err) {
+              console.error("PDF Parsing error:", err);
+              extractionStatus.textContent = 'Error parsing PDF structure. Please enter data manually.';
+              extractionStatus.className = 'extraction-status extraction-error';
+              manualEntry.style.display = 'block';
+            }
+          };
+          fileReader.readAsArrayBuffer(file);
+        } catch (error) {
+          console.error("File reading error:", error);
+          extractionStatus.textContent = 'Error reading PDF file. Please enter data manually.';
+          extractionStatus.className = 'extraction-status extraction-error';
+          manualEntry.style.display = 'block';
+        }
+      }
+    });
+
+    createBubbles();
+  </script>
+</body>
+
+</html>

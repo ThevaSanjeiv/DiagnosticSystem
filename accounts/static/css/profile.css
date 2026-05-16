@@ -1,0 +1,25 @@
+.profile-card {
+    max-width: 600px;
+    margin: 3rem auto;
+}
+
+.profile-detail {
+    display: flex;
+    justify-content: space-between;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.profile-detail:last-of-type {
+    border-bottom: none;
+}
+
+.profile-label {
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.profile-value {
+    font-weight: 500;
+    color: var(--text-main);
+}

@@ -1,0 +1,952 @@
+{% extends 'accounts/base.html' %}
+{% load static %}
+{% block title %}Diabetes Prediction{% endblock %}
+
+{% block content %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+<style>
+  html,
+  body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: 'Roboto', sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    height: 100vh;
+    margin: 0;
+    color: #333;
+    background: black;
+    overflow: auto;
+  }
+
+  /* Nav override for dark theme */
+  .navbar {
+    background-color: #111;
+    border-bottom: 1px solid #333;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 2rem;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1000;
+    box-sizing: border-box;
+  }
+
+  .nav-links a {
+    color: #ddd;
+  }
+
+  .loader {
+    overflow: hidden;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  .poly {
+    fill: none;
+    stroke: yellow;
+    stroke-width: 16;
+    transform-origin: center center;
+    animation: move 10s linear infinite;
+    animation-delay: calc(var(--i) * -0.5s);
+  }
+
+  @keyframes move {
+    0% {
+      transform: scale(0) rotate(0);
+      opacity: 1;
+    }
+
+    100% {
+      transform: scale(3) rotate(45deg);
+      opacity: 0;
+    }
+  }
+
+  .form-container {
+    padding: 30px;
+    background: #ffffff;
+    border-radius: 15px;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+    max-width: 450px;
+    width: 100%;
+    text-align: center;
+    position: relative;
+    z-index: 10;
+    margin: 80px 0 40px 0;
+  }
+
+  .form-container h1 {
+    margin-bottom: 20px;
+    font-size: 24px;
+    color: #333;
+  }
+
+  .form-container input {
+    margin-bottom: 15px;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    width: calc(100% - 24px);
+    font-size: 14px;
+    transition: all 0.3s;
+    box-sizing: border-box;
+  }
+
+  .form-container input:focus {
+    outline: none;
+    border-color: #6a1b9a;
+    box-shadow: 0 0 5px rgba(106, 27, 154, 0.5);
+  }
+
+  .btn-1 {
+    border: 1px solid;
+    border-radius: 999px;
+    box-sizing: border-box;
+    display: block;
+    font-weight: 900;
+    overflow: hidden;
+    padding: 1.2rem 3rem;
+    position: relative;
+    text-transform: uppercase;
+    background: #000;
+    color: #fff;
+    cursor: pointer;
+    transition: transform 0.3s cubic-bezier(0.87, 0, 0.13, 1);
+    margin: 0 auto;
+  }
+
+  .btn-1 .original {
+    background: #ffffff;
+    color: #000;
+    display: grid;
+    inset: 0;
+    place-content: center;
+    position: absolute;
+    transition: transform 0.3s cubic-bezier(0.87, 0, 0.13, 1);
+  }
+
+  .btn-1:hover .original {
+    transform: translateY(100%);
+  }
+
+  .btn-1 .letters {
+    display: inline-flex;
+  }
+
+  .btn-1 span {
+    opacity: 0;
+    transform: translateY(-15px);
+    transition: transform 0.3s cubic-bezier(0.87, 0, 0.13, 1), opacity 0.3s;
+  }
+
+  .btn-1 span:nth-child(2n) {
+    transform: translateY(15px);
+  }
+
+  .btn-1:hover span {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .btn-1:hover span:nth-child(2) {
+    transition-delay: 0.1s;
+  }
+
+  .btn-1:hover span:nth-child(3) {
+    transition-delay: 0.2s;
+  }
+
+  .btn-1:hover span:nth-child(4) {
+    transition-delay: 0.3s;
+  }
+
+  .btn-1:hover span:nth-child(5) {
+    transition-delay: 0.4s;
+  }
+
+  .btn-1:hover span:nth-child(6) {
+    transition-delay: 0.5s;
+  }
+
+  /* Result and PDF Button Styling */
+  .result-container {
+    margin-top: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    display: none;
+  }
+
+  .result-positive {
+    color: #d9534f;
+    font-weight: bold;
+    font-size: 18px;
+  }
+
+  .result-negative {
+    color: #5cb85c;
+    font-weight: bold;
+    font-size: 18px;
+  }
+
+  .pdf-btn {
+    margin-top: 15px;
+    padding: 12px 20px;
+    background: #6a1b9a;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+    display: none;
+    width: 100%;
+  }
+
+  .pdf-btn:hover {
+    background: #8e24aa;
+  }
+
+  .upload-btn {
+    margin-top: 10px;
+    padding: 12px 20px;
+    background: #2E7D32;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+    width: 100%;
+  }
+
+  .upload-btn:hover {
+    background: #4CAF50;
+  }
+
+  .home-link {
+    display: block;
+    margin-top: 20px;
+    color: #6a1b9a;
+    text-decoration: none;
+  }
+
+  .home-link:hover {
+    text-decoration: underline;
+  }
+
+  .pdf-upload-container {
+    margin-bottom: 15px;
+    text-align: left;
+  }
+
+  .pdf-upload-label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #555;
+  }
+
+  .uploaded-pdf {
+    margin-top: 10px;
+    padding: 10px;
+    background: #f0f0f0;
+    border-radius: 5px;
+    display: none;
+  }
+
+  .uploaded-pdf a {
+    color: #6a1b9a;
+    text-decoration: none;
+  }
+
+  .uploaded-pdf a:hover {
+    text-decoration: underline;
+  }
+
+  .extraction-status {
+    margin-top: 10px;
+    padding: 8px;
+    border-radius: 5px;
+    font-size: 12px;
+    display: none;
+  }
+
+  .extraction-success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+  }
+
+  .extraction-error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+  }
+
+  .data-preview {
+    margin-top: 15px;
+    padding: 10px;
+    background: #e9ecef;
+    border-radius: 5px;
+    display: none;
+    text-align: left;
+    font-size: 12px;
+  }
+
+  .data-item {
+    margin: 5px 0;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .manual-entry {
+    margin-top: 10px;
+    font-style: italic;
+    color: #6c757d;
+  }
+</style>
+
+<svg viewBox="0 0 1000 1000" class="loader">
+  <polygon points="500,200 759,650 241,650" style="--i: 0" class="poly"></polygon>
+  <polygon points="500,200 759,650 241,650" style="--i: 1" class="poly"></polygon>
+  <polygon points="500,200 759,650 241,650" style="--i: 2" class="poly"></polygon>
+  <polygon points="500,200 759,650 241,650" style="--i: 3" class="poly"></polygon>
+  <polygon points="500,200 759,650 241,650" style="--i: 4" class="poly"></polygon>
+  <polygon points="500,200 759,650 241,650" style="--i: 5" class="poly"></polygon>
+</svg>
+
+<nav class="navbar">
+  <a href="/home/" class="nav-brand">HealthSense AI</a>
+  <div class="nav-links">
+    <a href="/predict/diabetes/" style="font-weight: 700;">Diabetes</a>
+    <a href="/predict/pneumonia/">Pneumonia</a>
+    <a href="/predict/ckd/">CKD</a>
+    <a href="/profile/" class="profile-icon">👤</a>
+  </div>
+</nav>
+
+<div class="form-container">
+  <h1>Diabetes Prediction</h1>
+  <form id="diabetesForm">
+    <input type="number" id="pregnancies" name="pregnancies" placeholder="Pregnancies" required>
+    <input type="number" id="glucose" name="glucose" placeholder="Glucose" required>
+    <input type="number" id="bloodpressure" name="bloodpressure" placeholder="Blood Pressure" required>
+    <input type="number" id="skinthickness" name="skinthickness" placeholder="Skin Thickness" required>
+    <input type="number" id="insulin" name="insulin" placeholder="Insulin" required>
+    <input type="number" id="bmi" name="bmi" placeholder="BMI" step="0.1" required>
+    <input type="number" id="dpf" name="dpf" placeholder="Diabetes Pedigree Function" step="0.001" required>
+    <input type="number" id="age" name="age" placeholder="Age" required>
+
+    <div class="pdf-upload-container">
+      <label class="pdf-upload-label">Upload Medical Reports (PDF):</label>
+      <input type="file" id="pdfUpload" accept=".pdf" style="display: none;">
+      <button type="button" id="uploadBtn" class="upload-btn">Choose PDF File</button>
+      <div id="uploadedPdf" class="uploaded-pdf">
+        <span>Uploaded: </span>
+        <a id="pdfFileName" href="#" target="_blank"></a>
+      </div>
+      <div id="extractionStatus" class="extraction-status"></div>
+      <div id="dataPreview" class="data-preview"></div>
+      <div id="manualEntry" class="manual-entry">No recognizable data patterns found in PDF. Please enter data manually.
+      </div>
+    </div>
+
+    <button type="button" id="predictBtn" class="btn-1">
+      <div class="original">Predict</div>
+      <div class="letters">
+        <span>P</span>
+        <span>R</span>
+        <span>E</span>
+        <span>D</span>
+        <span>I</span>
+        <span>C</span>
+        <span>T</span>
+      </div>
+    </button>
+  </form>
+
+  <div id="resultContainer" class="result-container">
+    <h2>Prediction Result</h2>
+    <p id="predictionResult"></p>
+  </div>
+
+  <button id="downloadPdf" class="pdf-btn">Download PDF Report</button>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const { jsPDF } = window.jspdf;
+
+    const predictBtn = document.getElementById('predictBtn');
+    const downloadPdfBtn = document.getElementById('downloadPdf');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const pdfUpload = document.getElementById('pdfUpload');
+    const uploadedPdf = document.getElementById('uploadedPdf');
+    const pdfFileName = document.getElementById('pdfFileName');
+    const extractionStatus = document.getElementById('extractionStatus');
+    const dataPreview = document.getElementById('dataPreview');
+    const manualEntry = document.getElementById('manualEntry');
+    const resultContainer = document.getElementById('resultContainer');
+    const predictionResult = document.getElementById('predictionResult');
+    const form = document.getElementById('diabetesForm');
+
+    let uploadedPdfFile = null;
+    let uploadedPdfUrl = null;
+    let currentRiskLevel = '';
+
+    // Food recommendations based on risk level
+    // const foodRecommendations = {
+    //   high: [
+    //     "Leafy greens (spinach, kale) - Low in calories and carbohydrates",
+    //     "Fatty fish (salmon, sardines) - Rich in omega-3 fatty acids",
+    //     "Cinnamon - May improve insulin sensitivity",
+    //     "Chia seeds - High in fiber and omega-3s",
+    //     "Greek yogurt - High protein, lower in carbs",
+    //     "Nuts (almonds, walnuts) - Healthy fats and fiber"
+    //   ],
+    //   moderate: [
+    //     "Whole grains (oats, quinoa) - Slow-release carbohydrates",
+    //     "Legumes (lentils, beans) - High in fiber and protein",
+    //     "Berries (blueberries, strawberries) - Antioxidants with lower sugar",
+    //     "Sweet potatoes - Lower glycemic index than regular potatoes",
+    //     "Avocado - Healthy monounsaturated fats",
+    //     "Eggs - High-quality protein source"
+    //   ],
+    //   low: [
+    //     "Colorful vegetables (bell peppers, carrots) - Rich in antioxidants",
+    //     "Lean proteins (chicken, turkey) - Helps maintain muscle mass",
+    //     "Green tea - Antioxidants that may improve insulin sensitivity",
+    //     "Citrus fruits (oranges, grapefruit) - High in fiber and vitamin C",
+    //     "Pumpkin seeds - Rich in magnesium which helps control blood sugar",
+    //     "Apple - Fiber-rich fruit choice"
+    //   ]
+    // };
+    const diabetesRecommendations = {
+      highRisk: {
+        foodsToEat: [
+          "Leafy greens (spinach, kale, methi) - High fiber and low glycemic index",
+          "Fatty fish (salmon, sardines, mackerel) - Supports heart health",
+          "Chia seeds and flaxseeds - Improve blood sugar regulation",
+          "Nuts (almonds, walnuts) - Healthy fats and slow glucose absorption",
+          "Greek yogurt or unsweetened curd - High protein and probiotic support",
+          "Bitter gourd (karela) - Traditionally supports glucose control"
+        ],
+        foodsToAvoid: [
+          "Sugary drinks and soft drinks",
+          "White bread and refined flour products",
+          "Processed snacks and packaged foods",
+          "Deep fried foods",
+          "Excess sweets and desserts"
+        ],
+        lifestyleTips: [
+          "Walk at least 30 minutes daily",
+          "Monitor blood glucose regularly",
+          "Avoid skipping meals",
+          "Reduce stress through meditation or yoga",
+          "Maintain proper sleep schedule"
+        ]
+      },
+
+      moderateRisk: {
+        foodsToEat: [
+          "Whole grains (oats, brown rice, quinoa)",
+          "Legumes (lentils, chickpeas, beans)",
+          "Berries and apples - Fiber-rich fruits",
+          "Sweet potatoes - Lower glycemic index",
+          "Boiled eggs - Quality protein source",
+          "Avocado - Healthy monounsaturated fats"
+        ],
+        foodsToAvoid: [
+          "High sugar bakery items",
+          "Fast food",
+          "Excess rice portions",
+          "Sweetened cereals"
+        ],
+        lifestyleTips: [
+          "Exercise 4-5 times per week",
+          "Drink enough water",
+          "Maintain healthy body weight",
+          "Limit sugar intake"
+        ]
+      },
+
+      lowRisk: {
+        foodsToEat: [
+          "Fresh vegetables and salads",
+          "Lean proteins like chicken and fish",
+          "Green tea and herbal drinks",
+          "Citrus fruits in moderation",
+          "Pumpkin and sunflower seeds"
+        ],
+        lifestyleTips: [
+          "Continue balanced diet",
+          "Maintain regular physical activity",
+          "Annual diabetes screening",
+          "Avoid excessive sugar consumption"
+        ]
+      }
+    };
+    // Treatment plans based on diabetes risk level
+    // const diabetesTreatmentPlans = {
+    //   high: {
+    //     title: "High Risk Diabetes Management Plan",
+    //     recommendations: [
+    //       "Consult with an endocrinologist for comprehensive diabetes management",
+    //       "Monitor blood glucose levels regularly (fasting and postprandial)",
+    //       "Consider medication as prescribed (metformin, insulin, etc.)",
+    //       "Follow a strict low-carbohydrate diet (< 50g net carbs per day)",
+    //       "Engage in moderate exercise for at least 30 minutes daily",
+    //       "Lose 5-10% of body weight if overweight",
+    //       "Regular HbA1c testing every 3 months",
+    //       "Foot examination and eye checkup annually"
+    //     ]
+    //   },
+    //   moderate: {
+    //     title: "Moderate Risk Diabetes Prevention Plan",
+    //     recommendations: [
+    //       "Consult with primary care physician for diabetes screening",
+    //       "Monitor blood glucose levels periodically",
+    //       "Focus on weight management and healthy eating habits",
+    //       "Follow a balanced diet with controlled carbohydrate intake",
+    //       "Engage in regular physical activity (150 minutes/week)",
+    //       "Consider metformin if pre-diabetic and high BMI",
+    //       "Annual HbA1c testing to monitor progression",
+    //       "Education on diabetes symptoms and management"
+    //     ]
+    //   },
+    //   low: {
+    //     title: "Low Risk Diabetes Prevention Strategy",
+    //     recommendations: [
+    //       "Maintain healthy weight through balanced diet and exercise",
+    //       "Continue regular physical activity routine",
+    //       "Follow a Mediterranean-style diet rich in fruits, vegetables, and whole grains",
+    //       "Limit processed foods and sugary beverages",
+    //       "Annual health checkups including glucose monitoring",
+    //       "Stay informed about diabetes risk factors",
+    //       "Maintain healthy sleep patterns and stress management",
+    //       "Consider periodic diabetes risk assessment"
+    //     ]
+    //   }
+    // };
+
+    const diabetesTreatmentPlans = {
+      highRisk: {
+        title: "High Risk Diabetes Management Plan",
+
+        medicalRecommendations: [
+          "Consult an endocrinologist or diabetologist immediately",
+          "Perform regular fasting and postprandial blood glucose monitoring",
+          "Monitor HbA1c levels every 3 months",
+          "Follow prescribed medications consistently",
+          "Schedule regular eye, kidney, and foot examinations"
+        ],
+
+        dietRecommendations: [
+          "Follow a low glycemic index diet",
+          "Reduce intake of refined sugar and processed foods",
+          "Increase fiber-rich foods such as vegetables and whole grains",
+          "Avoid sugary beverages and excessive carbohydrate intake",
+          "Maintain proper hydration throughout the day"
+        ],
+
+        lifestyleRecommendations: [
+          "Exercise for at least 30–45 minutes daily",
+          "Maintain healthy body weight",
+          "Avoid smoking and alcohol consumption",
+          "Ensure proper sleep and stress management",
+          "Track daily calorie intake and physical activity"
+        ],
+
+        warning:
+          "Immediate medical consultation is recommended if symptoms such as excessive thirst, fatigue, blurred vision, or frequent urination are observed."
+      },
+
+      moderateRisk: {
+        title: "Moderate Risk Diabetes Prevention Plan",
+
+        medicalRecommendations: [
+          "Consult a physician for periodic diabetes screening",
+          "Check blood glucose levels at regular intervals",
+          "Monitor HbA1c annually",
+          "Track blood pressure and cholesterol levels"
+        ],
+
+        dietRecommendations: [
+          "Consume balanced meals with controlled carbohydrate portions",
+          "Prefer whole grains over refined grains",
+          "Include fruits and vegetables in daily meals",
+          "Limit high-sugar snacks and fast foods"
+        ],
+
+        lifestyleRecommendations: [
+          "Engage in physical activity for at least 150 minutes per week",
+          "Maintain healthy BMI range",
+          "Practice stress reduction techniques such as yoga or meditation",
+          "Avoid prolonged sedentary habits"
+        ],
+
+        warning:
+          "Moderate risk individuals should adopt preventive lifestyle modifications to avoid progression to Type 2 Diabetes."
+      },
+
+      lowRisk: {
+        title: "Low Risk Diabetes Prevention Strategy",
+
+        medicalRecommendations: [
+          "Continue annual health checkups",
+          "Monitor glucose levels during routine screenings",
+          "Maintain awareness of diabetes risk factors"
+        ],
+
+        dietRecommendations: [
+          "Maintain a balanced and nutritious diet",
+          "Limit sugary drinks and processed foods",
+          "Consume adequate fruits, vegetables, and lean proteins"
+        ],
+
+        lifestyleRecommendations: [
+          "Continue regular physical exercise",
+          "Maintain healthy sleep patterns",
+          "Stay physically active throughout the day",
+          "Maintain healthy body weight"
+        ],
+
+        warning:
+          "Continue healthy lifestyle practices to maintain low diabetes risk."
+      }
+    };
+
+    // Hide manual entry message initially
+    manualEntry.style.display = 'none';
+
+    // Set up PDF upload button
+    uploadBtn.addEventListener('click', function () {
+      pdfUpload.click();
+    });
+
+    pdfUpload.addEventListener('change', function (e) {
+      if (e.target.files.length > 0) {
+        uploadedPdfFile = e.target.files[0];
+
+        // Create object URL for the uploaded PDF
+        if (uploadedPdfUrl) {
+          URL.revokeObjectURL(uploadedPdfUrl);
+        }
+        uploadedPdfUrl = URL.createObjectURL(uploadedPdfFile);
+
+        // Display uploaded file name
+        pdfFileName.textContent = uploadedPdfFile.name;
+        pdfFileName.href = uploadedPdfUrl;
+        uploadedPdf.style.display = 'block';
+
+        // Extract data from PDF
+        extractDataFromPdf(uploadedPdfFile);
+      }
+    });
+
+    // Function to extract data from PDF
+    async function extractDataFromPdf(file) {
+      extractionStatus.style.display = 'block';
+      extractionStatus.textContent = 'Extracting data from PDF...';
+      extractionStatus.className = 'extraction-status';
+
+      dataPreview.style.display = 'none';
+      manualEntry.style.display = 'none';
+
+      try {
+        const fileReader = new FileReader();
+        fileReader.onload = async function () {
+          try {
+            const typedarray = new Uint8Array(this.result);
+
+            // Configure PDF.js worker
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+
+            // Load the PDF
+            const pdf = await pdfjsLib.getDocument(typedarray).promise;
+            let fullText = '';
+
+            for (let i = 1; i <= pdf.numPages; i++) {
+              const page = await pdf.getPage(i);
+              const textContent = await page.getTextContent();
+              const pageText = textContent.items.map(item => item.str).join(' ');
+              fullText += pageText + ' ';
+            }
+
+            const text = fullText.toLowerCase();
+
+            // Helper to extract values using regex
+            const extractValue = (regex) => {
+              const match = text.match(regex);
+              return match ? parseFloat(match[1]) : null;
+            };
+
+            const medicalData = {};
+
+            // Extract each field if present in the text
+            const pregnancies = extractValue(/pregnancies[^\d]*(\d+)/i);
+            if (pregnancies !== null) medicalData.pregnancies = pregnancies;
+
+            const glucose = extractValue(/glucose[^\d]*(\d+(?:\.\d+)?)/i);
+            if (glucose !== null) medicalData.glucose = glucose;
+
+            const bloodpressure = extractValue(/(?:blood\s*pressure|bp)[^\d]*(\d+(?:\.\d+)?)/i);
+            if (bloodpressure !== null) medicalData.bloodpressure = bloodpressure;
+
+            const skinthickness = extractValue(/skin\s*thickness[^\d]*(\d+(?:\.\d+)?)/i);
+            if (skinthickness !== null) medicalData.skinthickness = skinthickness;
+
+            const insulin = extractValue(/insulin[^\d]*(\d+(?:\.\d+)?)/i);
+            if (insulin !== null) medicalData.insulin = insulin;
+
+            const bmi = extractValue(/bmi[^\d]*(\d+(?:\.\d+)?)/i);
+            if (bmi !== null) medicalData.bmi = bmi;
+
+            const dpf = extractValue(/(?:pedigree|dpf)[^\d]*(\d+(?:\.\d+)?)/i);
+            if (dpf !== null) medicalData.dpf = dpf;
+
+            const age = extractValue(/age[^\d]*(\d+)/i);
+            if (age !== null) medicalData.age = age;
+
+            let extractedCount = Object.keys(medicalData).length;
+            let previewHTML = '<strong>Data extracted from PDF:</strong><br>';
+
+            for (const [key, value] of Object.entries(medicalData)) {
+              const inputField = document.getElementById(key);
+              if (inputField) {
+                inputField.value = value;
+                previewHTML += `<div class="data-item"><span>${key}:</span> <span>${value}</span></div>`;
+              }
+            }
+
+            if (extractedCount > 0) {
+              extractionStatus.textContent = `Successfully extracted ${extractedCount} data points from PDF!`;
+              extractionStatus.className = 'extraction-status extraction-success';
+              dataPreview.innerHTML = previewHTML;
+              dataPreview.style.display = 'block';
+            } else {
+              extractionStatus.textContent = 'No medical data found in PDF. Please enter data manually.';
+              extractionStatus.className = 'extraction-status extraction-error';
+              manualEntry.style.display = 'block';
+            }
+          } catch (err) {
+            console.error("PDF Parsing error:", err);
+            extractionStatus.textContent = 'Error parsing PDF structure. Please enter data manually.';
+            extractionStatus.className = 'extraction-status extraction-error';
+            manualEntry.style.display = 'block';
+          }
+        };
+        fileReader.readAsArrayBuffer(file);
+      } catch (error) {
+        console.error("File reading error:", error);
+        extractionStatus.textContent = 'Error reading PDF file. Please enter data manually.';
+        extractionStatus.className = 'extraction-status extraction-error';
+        manualEntry.style.display = 'block';
+      }
+    }
+
+    function validateInputs() {
+      const inputs = form.querySelectorAll('input[type="number"]');
+      let isValid = true;
+      inputs.forEach(input => {
+        if (!input.value) {
+          isValid = false;
+          input.style.borderColor = '#d9534f';
+        } else {
+          input.style.borderColor = '#ddd';
+        }
+      });
+      return isValid;
+    }
+
+    // Predict button click event (Django API integration)
+    predictBtn.addEventListener('click', async function () {
+      if (validateInputs()) {
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+
+        try {
+          const response = await fetch('/api/predict/diabetes/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+          });
+          const result = await response.json();
+
+          if (response.ok) {
+            const resText = result.result;
+            predictionResult.textContent = resText;
+
+            if (resText.includes('High') || resText.includes('Positive')) {
+              currentRiskLevel = 'high';
+              predictionResult.className = 'result-positive';
+            } else if (resText.includes('Moderate')) {
+              currentRiskLevel = 'moderate';
+              predictionResult.className = 'result-positive'; // using same class for visibility
+            } else {
+              currentRiskLevel = 'low';
+              predictionResult.className = 'result-negative';
+            }
+
+            resultContainer.style.display = 'block';
+            downloadPdfBtn.style.display = 'block';
+          } else {
+            alert('Prediction Error: ' + (result.error || 'Unknown error'));
+          }
+        } catch (err) {
+          alert('Network error. Please try again.');
+        }
+      } else {
+        alert('Please fill out all fields before predicting.');
+      }
+    });
+
+    // Download PDF button click event
+    downloadPdfBtn.addEventListener('click', function () {
+      const doc = new jsPDF();
+
+      doc.setFontSize(22);
+      doc.setTextColor(106, 27, 154);
+      doc.text('Diabetes Prediction Report', 105, 20, { align: 'center' });
+
+      doc.setFontSize(16);
+      doc.setTextColor(0, 0, 0);
+      doc.text('Patient Data', 20, 35);
+
+      const inputs = [
+        { id: 'pregnancies', label: 'Pregnancies' },
+        { id: 'glucose', label: 'Glucose' },
+        { id: 'bloodpressure', label: 'Blood Pressure' },
+        { id: 'skinthickness', label: 'Skin Thickness' },
+        { id: 'insulin', label: 'Insulin' },
+        { id: 'bmi', label: 'BMI' },
+        { id: 'dpf', label: 'Diabetes Pedigree Function' },
+        { id: 'age', label: 'Age' }
+      ];
+
+      let yPosition = 45;
+
+      doc.setFontSize(12);
+      doc.setFillColor(230, 230, 250);
+      doc.rect(20, yPosition, 80, 10, 'F');
+      doc.rect(100, yPosition, 80, 10, 'F');
+      doc.setTextColor(0, 0, 0);
+      doc.text('Parameter', 25, yPosition + 7);
+      doc.text('Value', 105, yPosition + 7);
+
+      yPosition += 12;
+
+      inputs.forEach(input => {
+        const value = document.getElementById(input.id).value || '-';
+        doc.rect(20, yPosition, 80, 10);
+        doc.rect(100, yPosition, 80, 10);
+        doc.text(input.label, 25, yPosition + 7);
+        doc.text(value, 105, yPosition + 7);
+        yPosition += 12;
+      });
+
+      if (uploadedPdfFile) {
+        doc.setFontSize(10);
+        doc.setTextColor(100, 100, 100);
+        doc.text(`Medical report uploaded: ${uploadedPdfFile.name}`, 20, yPosition + 5);
+        yPosition += 10;
+      }
+
+      doc.setFontSize(16);
+      doc.setTextColor(0, 0, 0);
+      doc.text('Prediction Result', 20, yPosition + 15);
+
+      doc.setFontSize(14);
+      const result = predictionResult.textContent;
+      const riskLevel = result.includes('High') ? [217, 83, 79] :
+        result.includes('Moderate') ? [240, 173, 78] : [92, 184, 92];
+      doc.setTextColor(...riskLevel);
+      doc.text(result, 20, yPosition + 25);
+      yPosition += 35;
+
+      const riskKey = currentRiskLevel + 'Risk';
+      const plan = diabetesTreatmentPlans[riskKey];
+
+      // Helper to add sections
+      const addSection = (title, items) => {
+        if (!items || items.length === 0) return;
+        if (yPosition > 270) { doc.addPage(); yPosition = 20; }
+        doc.setFontSize(12);
+        doc.setTextColor(0, 0, 0);
+        doc.text(title, 20, yPosition);
+        yPosition += 7;
+        doc.setFontSize(11);
+        items.forEach(item => {
+          if (yPosition > 270) { doc.addPage(); yPosition = 20; }
+          const splitItem = doc.splitTextToSize(`• ${item}`, 170);
+          doc.text(splitItem, 25, yPosition);
+          yPosition += splitItem.length * 6;
+        });
+        yPosition += 4;
+      };
+
+      doc.setFontSize(16);
+      doc.setTextColor(0, 0, 0);
+      doc.text('Personalized Treatment Plan', 20, yPosition);
+      yPosition += 10;
+
+      if (plan) {
+        doc.setFontSize(13);
+        doc.setTextColor(106, 27, 154);
+        doc.text(plan.title, 20, yPosition);
+        yPosition += 8;
+
+        addSection("Medical Recommendations:", plan.medicalRecommendations);
+        addSection("Diet Recommendations:", plan.dietRecommendations);
+        addSection("Lifestyle Recommendations:", plan.lifestyleRecommendations);
+
+        if (plan.warning) {
+          if (yPosition > 270) { doc.addPage(); yPosition = 20; }
+          doc.setFontSize(11);
+          doc.setTextColor(217, 83, 79);
+          const splitWarning = doc.splitTextToSize("Warning: " + plan.warning, 170);
+          doc.text(splitWarning, 20, yPosition);
+          yPosition += splitWarning.length * 6 + 4;
+        }
+      }
+
+      yPosition += 6;
+
+      doc.setFontSize(16);
+      doc.setTextColor(0, 0, 0);
+      doc.text('Nutrition & Lifestyle Recommendations', 20, yPosition);
+      yPosition += 10;
+
+      const recs = diabetesRecommendations[riskKey];
+      if (recs) {
+        addSection("Foods to Eat:", recs.foodsToEat);
+        addSection("Foods to Avoid:", recs.foodsToAvoid);
+        addSection("Lifestyle Tips:", recs.lifestyleTips);
+      }
+
+      doc.setFontSize(10);
+      doc.setTextColor(100, 100, 100);
+      doc.text(`Report generated on: ${new Date().toLocaleDateString()}`, 20, 285);
+      doc.text('Disclaimer: This is a demo tool, not a medical diagnosis.', 20, 290);
+
+      doc.save('diabetes-prediction-report.pdf');
+    });
+  });
+</script>
+{% endblock %}

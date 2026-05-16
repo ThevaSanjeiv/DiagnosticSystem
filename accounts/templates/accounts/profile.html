@@ -1,0 +1,27 @@
+{% extends 'accounts/base.html' %}
+{% load static %}
+{% block title %}Profile - HealthSense AI{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/home.css' %}">
+<link rel="stylesheet" href="{% static 'css/profile.css' %}">
+
+<!-- Navbar -->
+<nav class="navbar">
+    <a href="/home/" class="nav-brand">HealthSense AI</a>
+    <div class="nav-links">
+        <a href="/predict/diabetes/">Diabetes</a>
+        <a href="/predict/pneumonia/">Pneumonia</a>
+        <a href="/predict/ckd/">CKD</a>
+        <a href="/profile/" class="profile-icon">👤</a>
+    </div>
+</nav>
+
+<div class="card profile-card">
+    <h2>Your Profile</h2>
+    <div id="profile-container">
+        <!-- JS fills this -->
+        <p style="text-align: center;">Loading profile details...</p>
+    </div>
+</div>
+{% endblock %}

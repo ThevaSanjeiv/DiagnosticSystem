@@ -1,0 +1,347 @@
+{% extends 'accounts/base.html' %}
+{% load static %}
+{% block title %}CKD Diagnosis{% endblock %}
+
+{% block content %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  body {
+    font-family: 'Arial', sans-serif;
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(135deg, #6a11cb, #2575fc);
+    position: relative;
+    overflow-x: hidden;
+  }
+  
+  /* Navbar override for gradient theme */
+  .navbar {
+    background-color: rgba(0,0,0,0.5);
+    border-bottom: 1px solid rgba(255,255,255,0.2);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 2rem;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1000;
+    box-sizing: border-box;
+  }
+  .nav-links a, .nav-brand { color: #fff; }
+  
+  .background-animation {
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    z-index: -1;
+    top: 0;
+    left: 0;
+  }
+
+  .bubble {
+    position: absolute;
+    width: 50px;
+    height: 50px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    animation: floatUp 6s infinite ease-in-out;
+  }
+
+  @keyframes floatUp {
+    0% { transform: translateY(100vh) scale(0.8); opacity: 0; }
+    50% { opacity: 1; }
+    100% { transform: translateY(-10vh) scale(1.2); opacity: 0; }
+  }
+
+  .container {
+    max-width: 500px;
+    width: 100%;
+    padding: 30px;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    text-align: center;
+    animation: fadeIn 1s ease-in-out;
+    position: relative;
+    z-index: 10;
+    margin: 80px 0 40px 0;
+  }
+
+  h1 { margin-bottom: 20px; color: #333; }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    text-align: left;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+  }
+
+  label {
+    margin: 5px 0;
+    font-size: 13px;
+    font-weight: bold;
+    color: #555;
+  }
+
+  input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: border-color 0.3s ease;
+    box-sizing: border-box;
+  }
+
+  input:focus {
+    border-color: #6a11cb;
+    outline: none;
+  }
+
+  button {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(90deg, #6a11cb, #2575fc);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: transform 0.3s ease, background 0.3s ease;
+    margin-top: 15px;
+    margin-bottom: 10px;
+  }
+
+  button:hover {
+    background: linear-gradient(90deg, #2575fc, #6a11cb);
+    transform: scale(1.05);
+  }
+  
+  .pdf-btn {
+    background: linear-gradient(90deg, #4CAF50, #2E7D32);
+    display: none;
+  }
+  .pdf-btn:hover { background: linear-gradient(90deg, #2E7D32, #4CAF50); }
+
+  .result {
+    margin-top: 20px;
+    padding: 15px;
+    background: #f1f1f1;
+    border-radius: 8px;
+    color: #333;
+    font-size: 16px;
+    text-align: left;
+    animation: slideIn 0.5s ease-in-out;
+    display: none;
+  }
+  
+  .positive { color: #d32f2f; font-weight: bold; }
+  .negative { color: #2E7D32; font-weight: bold; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(-20px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+</style>
+
+<nav class="navbar">
+    <a href="/home/" class="nav-brand">HealthSense AI</a>
+    <div class="nav-links">
+        <a href="/predict/diabetes/">Diabetes</a>
+        <a href="/predict/pneumonia/">Pneumonia</a>
+        <a href="/predict/ckd/" style="font-weight: 700;">CKD</a>
+        <a href="/profile/" class="profile-icon">👤</a>
+    </div>
+</nav>
+
+<div class="background-animation"></div>
+<div class="container">
+  <h1>CKD Diagnosis</h1>
+  
+  <form id="ckdForm">
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Age:</label>
+        <input type="number" name="age" required>
+      </div>
+      <div class="form-group">
+        <label>Blood Pressure (bp):</label>
+        <input type="number" name="bp" required>
+      </div>
+      <div class="form-group">
+        <label>Specific Gravity (sg):</label>
+        <input type="number" name="sg" step="0.001" required>
+      </div>
+      <div class="form-group">
+        <label>Albumin (al):</label>
+        <input type="number" name="al" required>
+      </div>
+      <div class="form-group">
+        <label>Sugar (su):</label>
+        <input type="number" name="su" required>
+      </div>
+      <div class="form-group">
+        <label>Red Blood Cells (rbc):</label>
+        <input type="number" name="rbc" required>
+      </div>
+      <div class="form-group">
+        <label>Pus Cell (pc):</label>
+        <input type="number" name="pc" required>
+      </div>
+      <div class="form-group">
+        <label>Pus Cell Clumps (pcc):</label>
+        <input type="number" name="pcc" required>
+      </div>
+      <div class="form-group">
+        <label>Bacteria (ba):</label>
+        <input type="number" name="ba" required>
+      </div>
+      <div class="form-group">
+        <label>Blood Urea (bu):</label>
+        <input type="number" name="bu" step="0.1" required>
+      </div>
+      <div class="form-group" style="grid-column: span 2;">
+        <label>Serum Creatinine (sc):</label>
+        <input type="number" name="sc" step="0.1" required>
+      </div>
+    </div>
+    
+    <button type="submit" id="diagnoseBtn">Diagnose</button>
+  </form>
+  
+  <button id="downloadPdf" class="pdf-btn" onclick="generatePDF()">Download PDF Report</button>
+  <div class="result" id="result"></div>
+</div>
+
+<script>
+  let diagnosisResult = "";
+  let hasCKD = false;
+
+  function createBubbles() {
+    const background = document.querySelector('.background-animation');
+    for (let i = 0; i < 15; i++) {
+      let bubble = document.createElement('div');
+      bubble.classList.add('bubble');
+      let size = Math.random() * 50 + 20;
+      bubble.style.width = `${size}px`;
+      bubble.style.height = `${size}px`;
+      bubble.style.left = `${Math.random() * 100}vw`;
+      bubble.style.animationDuration = `${Math.random() * 4 + 3}s`;
+      bubble.style.animationDelay = `${Math.random() * 3}s`;
+      background.appendChild(bubble);
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    createBubbles();
+    const form = document.getElementById('ckdForm');
+    const resultDiv = document.getElementById('result');
+    const downloadPdf = document.getElementById('downloadPdf');
+    
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        
+        try {
+            const response = await fetch('/api/predict/ckd/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const result = await response.json();
+            
+            if (response.ok) {
+                const resText = result.result;
+                if (resText.includes('Positive')) {
+                    hasCKD = true;
+                    resultDiv.innerHTML = `<strong class="positive">Result: ${resText}</strong><br>Please consult a doctor for proper management.`;
+                } else {
+                    hasCKD = false;
+                    resultDiv.innerHTML = `<strong class="negative">Result: ${resText}</strong>`;
+                }
+                
+                resultDiv.style.display = 'block';
+                downloadPdf.style.display = 'block';
+            } else {
+                alert('Prediction Error: ' + (result.error || 'Unknown error'));
+            }
+        } catch(err) {
+            alert('Network error. Please try again.');
+        }
+    });
+  });
+
+  function generatePDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    doc.setFontSize(22);
+    doc.setTextColor(106, 17, 203);
+    doc.text('CKD Diagnosis Report', 105, 20, { align: 'center' });
+
+    doc.setFontSize(16);
+    doc.setTextColor(0, 0, 0);
+    doc.text('Patient Data', 20, 35);
+
+    const form = document.getElementById('ckdForm');
+    const formData = new FormData(form);
+    
+    let yPosition = 45;
+    doc.setFontSize(12);
+    doc.setFillColor(230, 230, 250);
+    doc.rect(20, yPosition, 80, 10, 'F');
+    doc.rect(100, yPosition, 80, 10, 'F');
+    doc.setTextColor(0, 0, 0);
+    doc.text('Parameter', 25, yPosition + 7);
+    doc.text('Value', 105, yPosition + 7);
+    yPosition += 12;
+
+    for (const [key, value] of formData.entries()) {
+        doc.rect(20, yPosition, 80, 10);
+        doc.rect(100, yPosition, 80, 10);
+        doc.text(key.toUpperCase(), 25, yPosition + 7);
+        doc.text(value || '-', 105, yPosition + 7);
+        yPosition += 12;
+        
+        if (yPosition > 270) {
+            doc.addPage();
+            yPosition = 20;
+        }
+    }
+
+    doc.setFontSize(16);
+    doc.setTextColor(0, 0, 0);
+    doc.text('Diagnosis Result', 20, yPosition + 15);
+
+    doc.setFontSize(14);
+    if (hasCKD) {
+      doc.setTextColor(211, 47, 47);
+      doc.text(`Positive for CKD. Please consult a doctor.`, 20, yPosition + 25);
+    } else {
+      doc.setTextColor(46, 125, 50);
+      doc.text('Negative for CKD.', 20, yPosition + 25);
+    }
+
+    doc.save('ckd-diagnosis-report.pdf');
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,139 @@
+/* pneumonia.css */
+.predict-card {
+    max-width: 600px;
+    margin: 2rem auto;
+    border-top: 4px solid #0056b3;
+    border-radius: 4px; /* More formal sharp edges */
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.upload-container {
+    margin-bottom: 2rem;
+    text-align: center;
+    background: #fdfdfd;
+    padding: 3rem 2rem;
+    border-radius: 4px;
+    border: 1px solid #d1dce5;
+    position: relative;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+
+.upload-container:hover {
+    background: #EEF2FF;
+    border-color: var(--primary);
+}
+
+.upload-icon {
+    font-size: 3.5rem;
+    color: var(--primary);
+    margin-bottom: 1rem;
+    opacity: 0.8;
+}
+
+.upload-label {
+    display: block;
+    font-weight: 600;
+    color: var(--text-main);
+    font-size: 1.15rem;
+    margin-bottom: 0.5rem;
+}
+
+.upload-sub {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+#fileInput {
+    display: none;
+}
+
+.image-preview-container {
+    display: none;
+    margin-bottom: 2rem;
+    text-align: center;
+    background: #FFFFFF;
+    padding: 1.5rem;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+}
+
+.image-preview {
+    max-width: 100%;
+    max-height: 350px;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border);
+    object-fit: contain;
+}
+
+.remove-image {
+    margin-top: 1rem;
+    color: var(--error);
+    background: none;
+    border: none;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    transition: background 0.2s;
+}
+
+.remove-image:hover {
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.result-container {
+    margin-top: 2rem;
+    text-align: center;
+    background: #F8FAFC;
+    padding: 1.5rem;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+}
+
+.result-container.hidden {
+    display: none;
+}
+
+.result-text {
+    font-size: 1.25rem;
+    font-weight: 700;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+}
+
+.result-positive {
+    background-color: rgba(239, 68, 68, 0.1);
+    color: var(--error);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.result-negative {
+    background-color: rgba(16, 185, 129, 0.1);
+    color: var(--success);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.subtitle {
+    text-align: center;
+    color: var(--text-muted);
+    margin-bottom: 1.5rem;
+    font-size: 0.95rem;
+}
+
+/* Formal Medical Theme Overrides */
+.predict-card .btn.primary {
+    background-color: #0056b3;
+    border-radius: 4px;
+}
+.predict-card .btn.primary:hover {
+    background-color: #004494;
+    transform: none;
+    box-shadow: none;
+}
+.predict-card .upload-icon {
+    color: #4f6477;
+}
