@@ -1,8 +1,12 @@
 from django.urls import path
+from django.shortcuts import redirect
 from . import views
 
+def redirect_to_home(request):
+    return redirect('/home/')
+
 urlpatterns = [
-    path('', views.home_view, name='home'),
+    path('', redirect_to_home, name='root_redirect'),
     path('diabetes/', views.diabetes_view, name='diabetes'),
     path('pneumonia/', views.pneumonia_view, name='pneumonia'),
     path('ckd/', views.ckd_view, name='ckd'),
