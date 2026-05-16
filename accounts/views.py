@@ -31,7 +31,6 @@ def signup_page(request):
 def login_page(request):
     return render(request, 'accounts/login.html')
 
-@session_login_required
 def home_page(request):
     return render(request, 'accounts/home.html')
 
