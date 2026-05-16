@@ -117,12 +117,11 @@ def api_predict_ckd(request):
 
 @csrf_exempt
 def api_predict_pneumonia(request):
-    import io
-    from PIL import Image
-    from tensorflow.keras.preprocessing.image import img_to_array
-    
     if request.method == "POST":
         try:
+            import io
+            from PIL import Image
+            from tensorflow.keras.preprocessing.image import img_to_array
             if 'file' not in request.FILES:
                 return JsonResponse({"status": "error", "message": "No file uploaded"}, status=400)
                 
